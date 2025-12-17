@@ -1,1 +1,3 @@
 # SpatialCovariance
+To install run:
+devtools::install_github("IbTJensen/SpatialCovariance")
