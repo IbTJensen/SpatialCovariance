@@ -1,12 +1,11 @@
-library(EstimationTools)
-library(data.table)
-library(spatstat)
-library(Rcpp)
-
 # Kernels
 k <- function(r) ifelse(abs(r) < 1, 3/4*(1-r^2), 0)
 k_b <- function(r, b) ifelse(abs(r) < b, k(r/b)/b, 0)
 
+#' @importFrom spatstat.geom crosspairs
+#' @importFrom data.table data.table setcolorder
+#' @importFrom spatstat.explore edge.Ripley
+#' @export
 table_construct <- function(X, Z){
   N_tau_W <- Z$n
   Neighbours <- crosspairs(X, Z, rmax = Inf)
@@ -22,6 +21,8 @@ table_construct <- function(X, Z){
   return(info_dt)
 }
 
+#' @importFrom spatstat.geom area
+#' @export
 hatc0 <- function(info_dt, X, Z, r, b){
   N_tau <- Z$n
   lambda <- X$n/area(X$window)
@@ -42,107 +43,29 @@ hatc0 <- function(info_dt, X, Z, r, b){
 }
 
 # sourceCpp("index_cpp.cpp")
+#' @importFrom EstimationTools gauss_quad
+#' @export
 Mise_est <- function(info_dt, X, Z, b, R){
   info_dt_R <- info_dt[dist < R]
   info_dt_R <- info_dt_R[order(dist)]
   N_tau <- Z$n
   lambda <- X$n/area(X$window)
 
-  # pair_ppp <- ppp(x = info_dt_R$u_x - info_dt_R$v_x,
-  #                 y = info_dt_R$u_y - info_dt_R$v_y,
-  #                 window = owin(xrange = c(-R, R), yrange = c(-R, R)))
-  #
-  # quartets <- closepairs(pair_ppp, rmax = b)
-  # qmat <- matrix(NA, nrow = length(quartets$i), ncol = 2)
-  # qmat[,1] <- quartets$i
-  # qmat[,2] <- quartets$j
-  #
-  # a <- Sys.time()
-  # test <- dist(info_dt_R$dist)
-  # Sys.time()-a
-
-  # a <- Sys.time()
-  # n <- nrow(info_dt_R)
-  # L <- rep(list(NA), n)
-  # i <- 1
-  # while(i<=n){
-  #   # cat(i, "\r")
-  #   d <- 0
-  #   j <- i
-  #   uvi <- info_dt_R$dist[i]
-  #   # forwards
-  #   while(d < b & j < n){
-  #     j <- j+1
-  #     d <- info_dt_R$dist[j]-uvi
-  #   }
-  #   idx_f <- (i+1):(j-1)
-  #   # backwards
-  #   j <- i
-  #   while(d > -b & j > 1){
-  #     j <- j-1
-  #     d <- info_dt_R$dist[j]-uvi
-  #   }
-  #   j <- ifelse(j == 1, 0, j)
-  #   idx_b <- (j+1):(i-1)
-  #   idx_b <- setdiff(idx_b, 0)
-  #   L[[i]] <- c(idx_b, idx_f[-1])
-  #   i <- i+1
-  # }
-  # Sys.time()-a
-
-  # idx_dist_pairs <- neighbors_within_band(info_dt_R$dist, b)
-  idx_dist_pairs <- neighbors_matrix_condition(as.matrix(info_dt_R[,c(1:4,6)]), b)
+  idx_dist_pairs <- neighbors_matrix_condition(
+    as.matrix(info_dt_R[,c(1:4,6)]), b
+  )
   idx_dist_pairs <- lapply(1:length(idx_dist_pairs),
                            function(i) list(dist = info_dt_R$dist[i],
-                                            idx = idx_dist_pairs[[i]])
-                           )
+                                            idx = idx_dist_pairs[[i]]))
 
-  # Find all pairs of indicies (i,j), such that dist[i]-dist[j] in (-b,b)
-  # a <- Sys.time()
-  # idx_dist_pairs <- lapply(
-  #   info_dt_R$dist,
-  #   function(x){
-  #     list(dist = x, idx = which(between(x - info_dt_R$dist, -b, b)))
-  #   }
-  # )
-  # Sys.time()-a
-
-  # a <- Sys.time()
-  # idx_dist_pairs <- lapply(
-  #   info_dt_R$dist, function(x) which(abs(x-info_dt_R$dist)<b & x!=info_dt_R$dist)
-  # )
-  # Sys.time()-a
-
-  # a <- Sys.time()
-  # idx_dist_pairs2 <- lapply(
-  #   1:nrow(info_dt_R),
-  #   function(i){
-  #     list(dist = info_dt_R$dist[i], idx = which(
-  #       # between(info_dt_R$dist[i] - info_dt_R$dist, -b, b) &
-  #       abs(info_dt_R$dist[i] - info_dt_R$dist) < b &
-  #         ((info_dt_R$u_x[i] != info_dt_R$u_x | info_dt_R$u_y[i] != info_dt_R$u_y) &
-  #         (info_dt_R$v_x[i] != info_dt_R$v_x | info_dt_R$v_y[i] != info_dt_R$v_y))
-  #     ))
-  #   }
-  # )
-  # idx_dist_pairs3 <- lapply(idx_dist_pairs2, function(x) x$idx)
-  # Sys.time()-a
   # Caluclate the terms in the sum to estimate c0 for each dist
   c0_sum_terms <- lapply(
     idx_dist_pairs,
     function(x){
-      info_dt_R$Z_v[x$idx]*k_b(x$dist-info_dt_R$dist[x$idx], b)*info_dt_R$e[x$idx]/
-        (lambda*2*pi*x$dist)
+      info_dt_R$Z_v[x$idx]*k_b(x$dist-info_dt_R$dist[x$idx], b)*
+        info_dt_R$e[x$idx]/(lambda*2*pi*x$dist)
     }
   )
-
-  # c0_sum_terms <- lapply(
-  #   idx_dist_pairs,
-  #   function(x){
-  #     info_dt_R$Z_v[x]*k_b(x$dist-info_dt_R$dist[x], b)*info_dt_R$e[x]/
-  #       (lambda*2*pi*x$dist)
-  #   }
-  # )
   rm(idx_dist_pairs); gc()
 
   # sum over all terms to esimate c0^-(u,v)(||u-v||) for every point-pair (u,v)
@@ -170,12 +93,39 @@ Mise_est <- function(info_dt, X, Z, b, R){
   return(Mise_term1 - 2*Mise_term2)
 }
 
-bandwidth_selection <- function(X, Z, R){
-  info_dt <- table_construct(X, Z)
+#' @export
+bandwidth_selection <- function(info_dt, X, Z, R){
   MISE_est_fct <- function(b) Mise_est(info_dt, X, Z, b, R)
 
   O <- optim(par = 0.5, fn = MISE_est_fct, lower = 0, upper = 1,
              method = "L-BFGS-B")
 
   b <- O$par
+}
+
+#' Estimates covariance between point pattern and spatial covariance with
+#' a kernel estimation procedure. Bandwidth selection is employed to selecet
+#' the optimal bandwidth.
+#' @param X A point pattern represented by a ppp object.
+#' @param Z The spatial covariate represented as a marked ppp object where the
+#' coordinates represents the spatial locations where the coviaraite is
+#' measured, and the marks represents the measured values.
+#' @param R The range over which the error of the esimator is assessed. This
+#' is used to calculate the Mean Integrated Squared Error (MISE) used for
+#' bandwidth selection. Must be a positive number.
+#' @param r Vector of distance(s) for which to esimate the spatial covariance.
+#' @return Returns a list containing the estimated covariances (c0), the
+#' distances at which the covariances are estimated (r), and the selected
+#' bandwidth (b).
+#' @export
+SpatCovarEst <- function(X, Z, R, r){
+  info_dt <- table_construct(X, Z)
+  b <- bandwidth_selection(info_dt, X, Z, R)
+  if(length(r) == 1){
+    c0 <- hatc0(info_dt, X, Z, r, b)
+  }
+  if(length(r) > 1){
+    c0 <- sapply(r, function(x) hatc0(info_dt, X, Z, x, b))
+  }
+  out <- list(c0 = c0, r = r, b = b)
 }
