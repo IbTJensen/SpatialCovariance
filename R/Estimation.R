@@ -2,6 +2,9 @@
 k <- function(r) ifelse(abs(r) < 1, 3/4*(1-r^2), 0)
 k_b <- function(r, b) ifelse(abs(r) < b, k(r/b)/b, 0)
 
+#' @useDynLib SpatialCovariance, .registration = TRUE
+NULL
+
 #' @importFrom spatstat.geom crosspairs
 #' @importFrom data.table data.table setcolorder
 #' @importFrom spatstat.explore edge.Ripley
