@@ -43,6 +43,7 @@ hatc0 <- function(info_dt, X, Z, r, b){
 }
 
 #' @importFrom EstimationTools gauss_quad
+#' @importFrom Rcpp sourceCpp
 #' @export
 Mise_est <- function(info_dt, X, Z, b, R){
   info_dt_R <- info_dt[dist < R]
