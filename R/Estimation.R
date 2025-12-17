@@ -2,6 +2,7 @@
 k <- function(r) ifelse(abs(r) < 1, 3/4*(1-r^2), 0)
 k_b <- function(r, b) ifelse(abs(r) < b, k(r/b)/b, 0)
 
+#' @importFrom Rcpp sourceCpp
 #' @useDynLib SpatialCovariance, .registration = TRUE
 NULL
 
@@ -46,7 +47,6 @@ hatc0 <- function(info_dt, X, Z, r, b){
 }
 
 #' @importFrom EstimationTools gauss_quad
-#' @importFrom Rcpp sourceCpp
 #' @export
 Mise_est <- function(info_dt, X, Z, b, R){
   info_dt_R <- info_dt[dist < R]
@@ -54,7 +54,6 @@ Mise_est <- function(info_dt, X, Z, b, R){
   N_tau <- Z$n
   lambda <- X$n/area(X$window)
 
-  sourceCpp("Estimation.cpp")
   idx_dist_pairs <- Index_selection(as.matrix(info_dt_R[,c(1:4,6)]), b)
   idx_dist_pairs <- lapply(1:length(idx_dist_pairs),
                            function(i) list(dist = info_dt_R$dist[i],
