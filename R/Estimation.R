@@ -9,7 +9,6 @@ NULL
 #' @importFrom spatstat.geom crosspairs
 #' @importFrom data.table data.table setcolorder
 #' @importFrom spatstat.explore edge.Ripley
-#' @export
 table_construct <- function(X, Z){
   N_tau_W <- Z$n
   Neighbours <- crosspairs(X, Z, rmax = Inf)
@@ -26,7 +25,6 @@ table_construct <- function(X, Z){
 }
 
 #' @importFrom spatstat.geom area
-#' @export
 hatc0 <- function(info_dt, X, Z, r, b){
   N_tau <- Z$n
   lambda <- X$n/area(X$window)
@@ -47,7 +45,6 @@ hatc0 <- function(info_dt, X, Z, r, b){
 }
 
 #' @importFrom EstimationTools gauss_quad
-#' @export
 Mise_est <- function(info_dt, X, Z, b, R){
   info_dt_R <- info_dt[dist < R]
   info_dt_R <- info_dt_R[order(dist)]
@@ -94,7 +91,6 @@ Mise_est <- function(info_dt, X, Z, b, R){
   return(Mise_term1 - 2*Mise_term2)
 }
 
-#' @export
 bandwidth_selection <- function(info_dt, X, Z, R){
   MISE_est_fct <- function(b) Mise_est(info_dt, X, Z, b, R)
 
