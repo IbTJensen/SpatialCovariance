@@ -42,7 +42,6 @@ hatc0 <- function(info_dt, X, Z, r, b){
   return(c0)
 }
 
-# sourceCpp("index_cpp.cpp")
 #' @importFrom EstimationTools gauss_quad
 #' @export
 Mise_est <- function(info_dt, X, Z, b, R){
@@ -51,9 +50,8 @@ Mise_est <- function(info_dt, X, Z, b, R){
   N_tau <- Z$n
   lambda <- X$n/area(X$window)
 
-  idx_dist_pairs <- neighbors_matrix_condition(
-    as.matrix(info_dt_R[,c(1:4,6)]), b
-  )
+  sourceCpp("Estimation.cpp")
+  idx_dist_pairs <- Index_selection(as.matrix(info_dt_R[,c(1:4,6)]), b)
   idx_dist_pairs <- lapply(1:length(idx_dist_pairs),
                            function(i) list(dist = info_dt_R$dist[i],
                                             idx = idx_dist_pairs[[i]]))

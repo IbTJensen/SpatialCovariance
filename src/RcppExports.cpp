@@ -10,21 +10,21 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// neighbors_matrix_condition
-List neighbors_matrix_condition(const NumericMatrix& A, double b);
-RcppExport SEXP _SpatialCovariance_neighbors_matrix_condition(SEXP ASEXP, SEXP bSEXP) {
+// Index_selection
+List Index_selection(const NumericMatrix& A, double b);
+RcppExport SEXP _SpatialCovariance_Index_selection(SEXP ASEXP, SEXP bSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const NumericMatrix& >::type A(ASEXP);
     Rcpp::traits::input_parameter< double >::type b(bSEXP);
-    rcpp_result_gen = Rcpp::wrap(neighbors_matrix_condition(A, b));
+    rcpp_result_gen = Rcpp::wrap(Index_selection(A, b));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_SpatialCovariance_neighbors_matrix_condition", (DL_FUNC) &_SpatialCovariance_neighbors_matrix_condition, 2},
+    {"_SpatialCovariance_Index_selection", (DL_FUNC) &_SpatialCovariance_Index_selection, 2},
     {NULL, NULL, 0}
 };
 

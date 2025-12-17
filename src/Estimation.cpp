@@ -2,10 +2,10 @@
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-List neighbors_matrix_condition(const NumericMatrix& A, double b) {
+List Index_selection(const NumericMatrix& A, double b) {
   int n = A.nrow();
   List result(n);
-  
+
   if (n == 0 || b <= 0) return result;
   int left = 0;
   int right = 0;
