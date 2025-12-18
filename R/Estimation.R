@@ -57,6 +57,7 @@ Mise_est <- function(info_dt, X, Z, b, R){
                                             idx = idx_dist_pairs[[i]]))
 
   # Caluclate the terms in the sum to estimate c0 for each dist
+  a <- Sys.time()
   c0_sum_terms <- lapply(
     idx_dist_pairs,
     function(x){
@@ -64,6 +65,7 @@ Mise_est <- function(info_dt, X, Z, b, R){
         info_dt_R$e[x$idx]/(lambda*2*pi*x$dist)
     }
   )
+  Sys.time()-a
   rm(idx_dist_pairs); gc()
 
   # sum over all terms to esimate c0^-(u,v)(||u-v||) for every point-pair (u,v)
