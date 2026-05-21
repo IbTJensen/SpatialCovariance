@@ -14,7 +14,6 @@ SpatCovarEst(
   b_init = NULL,
   b_limit = NULL,
   grid = NULL,
-  divisor = "dist",
   fast = TRUE
 )
 }
@@ -41,9 +40,6 @@ will then be selected for the mixed moment estimator. If set to NULL the MISE
 is found with numeric optimsation optimised. Using grid can sometimes save
 considerable computational resources, but unless this is relevant consideration,
 it is recommended to leave grid = NULL.}
-
-\item{divisor}{Option to choose if r or ||u-v|| should be used in the divisor.
-In the former case set divisor = "r", and in the latter case set divisor = "dist".}
 
 \item{fast}{Should the leave-one-out cross-validation use a fast approximation? 
 True by default.}

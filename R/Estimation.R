@@ -41,26 +41,21 @@ table_construct <- function(X, Z) {
 }
 
 # Note: This function deprecated, hatc0_cpp is used internally instead.
-hatc0 <- function(info_dt, X, Z, r, b, divisor){
+hatc0 <- function(info_dt, X, Z, r, b){
   N_tau <- Z$n
   lambda <- X$n/spatstat.geom::area(X$window)
 
   info_dt <- info_dt[dist > r-b & dist < r+b]
   info_dt[,k:=k_b(r-dist, b)]
 
-  if (divisor == "r") {
-    info_dt[, X_sum_terms := Z_v * (k * e) / (lambda * (2 * pi * r))]
-  }
-  if (divisor == "dist") {
-    info_dt[, X_sum_terms := Z_v * (k * e) / (lambda * (2 * pi * dist))]
-  }
+  info_dt[, X_sum_terms := Z_v * (k * e) / (lambda * (2 * pi * dist))]
   # info_sum <- info_dt[,.(sum_terms = sum(Z_v*X_sum_terms)), list(v_x, v_y)]
   # c0 <- sum(info_sum$sum_terms)/N_tau
   c0 <- sum(info_dt$X_sum_terms)/N_tau
   return(c0)
 }
 
-Mise_est <- function(info_dt, X, Z, b, R, divisor, fast) {
+Mise_est <- function(info_dt, X, Z, b, R, fast) {
   info_dt_R <- info_dt[dist < R]
   info_dt_R <- info_dt_R[order(dist)]
   N_tau <- Z$n
@@ -150,9 +145,9 @@ Mise_est <- function(info_dt, X, Z, b, R, divisor, fast) {
 }
 
 bandwidth_selection_optim <- function(
-  info_dt, X, Z, R, b_init = NULL, b_limit = NULL, divisor, fast
+  info_dt, X, Z, R, b_init = NULL, b_limit = NULL, fast
 ) {
-  MISE_est_fct <- function(b) Mise_est(info_dt, X, Z, b = b, R, divisor, fast)
+  MISE_est_fct <- function(b) Mise_est(info_dt, X, Z, b = b, R, fast)
   # MISE_est_fct <- function(b) Mise_est(info_dt, X, Z, b = expit_R(b, R), R)
 
   if (is.null(b_limit)) {
@@ -190,7 +185,7 @@ bandwidth_selection_optim <- function(
 
 bandwidth_selection_grid <- function(info_dt, X, Z, R, grid, fast) {
   stopifnot(class(grid) %in% c("numeric", "double", "integer"))
-  grid_search <- lapply(grid, function(b) Mise_est(info_dt, X, Z, b, R, divisor, fast))
+  grid_search <- lapply(grid, function(b) Mise_est(info_dt, X, Z, b, R, fast))
   grid_search <- unlist(grid_search)
   best_idx <- which.min(grid_search)
   grid[best_idx]
@@ -215,8 +210,6 @@ bandwidth_selection_grid <- function(info_dt, X, Z, R, grid, fast) {
 #' is found with numeric optimsation optimised. Using grid can sometimes save
 #' considerable computational resources, but unless this is relevant consideration,
 #' it is recommended to leave grid = NULL.
-#' @param divisor Option to choose if r or ||u-v|| should be used in the divisor.
-#' In the former case set divisor = "r", and in the latter case set divisor = "dist".
 #' @param fast Should the leave-one-out cross-validation use a fast approximation? 
 #' True by default.
 #' @return Returns a list containing the estimated covariances (c0), the
@@ -224,7 +217,7 @@ bandwidth_selection_grid <- function(info_dt, X, Z, R, grid, fast) {
 #' bandwidth (b).
 #' @export
 SpatCovarEst <- function(
-  X, Z, R, r, b_init = NULL, b_limit = NULL, grid = NULL, divisor = "dist", fast = TRUE
+  X, Z, R, r, b_init = NULL, b_limit = NULL, grid = NULL, fast = TRUE
 ) {
   if (class(X) != "ppp" | class(Z) != "ppp") {
     stop("X and Z must be a spatstat ppp class")
@@ -249,16 +242,12 @@ SpatCovarEst <- function(
       stop("All elements in grid must be between 0 and R")
     }
   }
-
-  if(!(divisor %in% c("r", "dist"))){
-    stop("Argument divisor must be 'r' or 'dist'.")
-  }
   
   info_dt <- table_construct(X, Z)
   if (is.null(grid)) {
-    b <- bandwidth_selection_optim(info_dt, X, Z, R, b_init, b_limit, divisor, fast)
+    b <- bandwidth_selection_optim(info_dt, X, Z, R, b_init, b_limit, fast)
   } else {
-    b <- bandwidth_selection_grid(info_dt, X, Z, R, grid, divisor, fast)
+    b <- bandwidth_selection_grid(info_dt, X, Z, R, grid, fast)
   }
   
   info_dt <- info_dt[order(dist)]
@@ -300,8 +289,12 @@ SpatCovarEstFixed <- function(X, Z, r, b) {
     stop("X and Z must be a spatstat ppp class")
   }
 
-  if (r < 0 | b < 0) {
-    stop("r and b must be positive numbers.")
+  if (any(r < 0)) {
+    stop("All r must be positive numbers.")
+  }
+
+  if(b < 0){
+    stop("b must be positive.")
   }
   
   N_tau <- Z$n
