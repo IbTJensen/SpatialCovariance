@@ -141,3 +141,89 @@ NumericVector compute_c0_cpp(NumericVector dist,
   return c0;
 }
 
+// [[Rcpp::export]]
+int closest_index(NumericVector dist, double r) {
+  int n = dist.size();
+  if (n == 0) {
+    stop("Input vector is empty.");
+  }
+  
+  int best_idx = 0;
+  double best_diff = std::abs(dist[0] - r);
+  
+  for (int i = 1; i < n; ++i) {
+    double diff = std::abs(dist[i] - r);
+    if (diff < best_diff) {
+      best_diff = diff;
+      best_idx = i;
+    }
+  }
+  
+  return best_idx;
+}
+
+// [[Rcpp::export]]
+NumericVector hatc0_cpp(
+  NumericVector dist, NumericVector r, NumericVector Z_v, NumericVector e,
+  double lambda, double b, double N_tau
+) {
+
+  int m = r.size();
+  int n = dist.size();
+  NumericVector c0(m, NA_REAL);
+
+  const double two_pi = 2.0 * M_PI;
+
+  for (int i = 0; i < m; ++i) {
+
+    // If r[i] is smaller than all distances, and the difference between r and 
+    // the smallest ||u-v|| is more than b, then no distances are within the
+    // band-width. In such a case, return 0
+    if(dist[0] - r[i] > b ){
+      c0[i] = 0;
+      continue;
+    }
+
+    // If r[n-1] is larger than all distances, and the difference between r and 
+    // the largest ||u-v|| is more than b, then no distances are within the
+    // band-width. In such a case, return 0
+    if(r[i] - dist[n-1] > b ){
+      c0[i] = 0;
+      continue;
+    }
+
+    int k = closest_index(dist, r[i]);
+    int left = k;
+    int right = k;
+    
+    // Move left boundary
+    while (left > 0 && std::abs(r[i] - dist[left]) < b) {
+      --left;
+    }
+
+    // Move right boundary
+    while (right < n - 1 && std::abs(r[i] - dist[right]) < b) {
+      ++right;
+    }
+
+    double sum_terms = 0.0;
+
+    for (int j = left; j <= right; ++j) {
+      double kernel_val =
+        k_b_scalar(r[i] - dist[j], b);
+
+      sum_terms +=
+        Z_v[j] *
+        kernel_val *
+        e[j] /
+        (lambda * two_pi * dist[j]);
+    }
+
+    c0[i] = sum_terms / N_tau;
+  }
+
+  return c0;
+}
+
+
+

@@ -9,3 +9,11 @@ compute_c0_cpp <- function(dist, Z_v, e, lambda, b, N_tau) {
     .Call(`_MMdens_compute_c0_cpp`, dist, Z_v, e, lambda, b, N_tau)
 }
 
+closest_index <- function(dist, r) {
+    .Call(`_MMdens_closest_index`, dist, r)
+}
+
+hatc0_cpp <- function(dist, r, Z_v, e, lambda, b, N_tau) {
+    .Call(`_MMdens_hatc0_cpp`, dist, r, Z_v, e, lambda, b, N_tau)
+}
+

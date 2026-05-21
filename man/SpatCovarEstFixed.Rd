@@ -5,7 +5,7 @@
 \title{Estimates covariance between point pattern and spatial covariance with
 a kernel estimation procedure for a user-specified bandwidth.}
 \usage{
-SpatCovarEstFixed(X, Z, r, b, divisor = "r")
+SpatCovarEstFixed(X, Z, r, b)
 }
 \arguments{
 \item{X}{A point pattern represented by a ppp object.}
@@ -17,14 +17,10 @@ measured, and the marks represents the measured values.}
 \item{r}{Vector of distance(s) for which to esimate the spatial covariance.}
 
 \item{b}{The selected bandwidth.}
-
-\item{divisor}{Option to choose if r or ||u-v|| should be used in the divisor.
-In the former case set divisor = "r", and in the latter case set divisor = "dist".}
 }
 \value{
-Returns a list containing the estimated covariances (c0), the
-distances at which the covariances are estimated (r), and the selected
-bandwidth (b).
+Returns a list containing the estimated covariances (c0) and the
+distances at which the covariances are estimated (r).
 }
 \description{
 Estimates covariance between point pattern and spatial covariance with

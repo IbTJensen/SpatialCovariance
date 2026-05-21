@@ -38,10 +38,41 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// closest_index
+int closest_index(NumericVector dist, double r);
+RcppExport SEXP _MMdens_closest_index(SEXP distSEXP, SEXP rSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type dist(distSEXP);
+    Rcpp::traits::input_parameter< double >::type r(rSEXP);
+    rcpp_result_gen = Rcpp::wrap(closest_index(dist, r));
+    return rcpp_result_gen;
+END_RCPP
+}
+// hatc0_cpp
+NumericVector hatc0_cpp(NumericVector dist, NumericVector r, NumericVector Z_v, NumericVector e, double lambda, double b, double N_tau);
+RcppExport SEXP _MMdens_hatc0_cpp(SEXP distSEXP, SEXP rSEXP, SEXP Z_vSEXP, SEXP eSEXP, SEXP lambdaSEXP, SEXP bSEXP, SEXP N_tauSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type dist(distSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type r(rSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type Z_v(Z_vSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type e(eSEXP);
+    Rcpp::traits::input_parameter< double >::type lambda(lambdaSEXP);
+    Rcpp::traits::input_parameter< double >::type b(bSEXP);
+    Rcpp::traits::input_parameter< double >::type N_tau(N_tauSEXP);
+    rcpp_result_gen = Rcpp::wrap(hatc0_cpp(dist, r, Z_v, e, lambda, b, N_tau));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_MMdens_Index_selection", (DL_FUNC) &_MMdens_Index_selection, 2},
     {"_MMdens_compute_c0_cpp", (DL_FUNC) &_MMdens_compute_c0_cpp, 6},
+    {"_MMdens_closest_index", (DL_FUNC) &_MMdens_closest_index, 2},
+    {"_MMdens_hatc0_cpp", (DL_FUNC) &_MMdens_hatc0_cpp, 7},
     {NULL, NULL, 0}
 };
 

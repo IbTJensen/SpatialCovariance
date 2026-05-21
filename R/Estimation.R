@@ -40,19 +40,14 @@ table_construct <- function(X, Z) {
   return(info_dt)
 }
 
-#' @importFrom spatstat.geom area
+# Note: This function deprecated, hatc0_cpp is used internally instead.
 hatc0 <- function(info_dt, X, Z, r, b, divisor){
   N_tau <- Z$n
-  lambda <- X$n/area(X$window)
+  lambda <- X$n/spatstat.geom::area(X$window)
 
   info_dt <- info_dt[dist > r-b & dist < r+b]
   info_dt[,k:=k_b(r-dist, b)]
 
-  # Note: Markus' kode og besrkivelse bruger 2*pi*r, mens Rasmus'
-  # besrkivelse bruger ||u-v||. Sidstenævnte svarer til at skifte
-  # 2*pi*r ud med dist nedenfor. Førstenævnte giver dog et estimat i tråd med
-  # forventningen, mens sidstenævnte ikke gør.
-  # info_dt[,X_sum_terms:=(k*e)/(lambda*(2*pi*r))]
   if (divisor == "r") {
     info_dt[, X_sum_terms := Z_v * (k * e) / (lambda * (2 * pi * r))]
   }
@@ -65,12 +60,11 @@ hatc0 <- function(info_dt, X, Z, r, b, divisor){
   return(c0)
 }
 
-#' @importFrom EstimationTools gauss_quad
 Mise_est <- function(info_dt, X, Z, b, R, divisor, fast) {
   info_dt_R <- info_dt[dist < R]
   info_dt_R <- info_dt_R[order(dist)]
   N_tau <- Z$n
-  lambda <- X$n / area(X$window)
+  lambda <- X$n / spatstat.geom::area(X$window)
 
   if (fast == FALSE) {
     # Extracting the indicies in info_dt_R relevant for the sum used to estimate c_0^-(u,v)(||u-v||)
@@ -125,15 +119,28 @@ Mise_est <- function(info_dt, X, Z, b, R, divisor, fast) {
   }
 
   # Quadrature for term 1
-  hatc <- function(info_dt, X, Z, r, b) {
-    sapply(r, function(x) hatc0(info_dt, X, Z, x, b, divisor))
-  }
+  # hatc <- function(info_dt, X, Z, r, b) {
+  #   sapply(r, function(x) hatc0(info_dt, X, Z, x, b, divisor))
+  # }
+
+  # hatcsq <- function(r) {
+  #   return(hatc(info_dt, X, Z, r, b)^2 * r)
+  # }
 
   hatcsq <- function(r) {
-    return(hatc(info_dt, X, Z, r, b)^2 * r)
+    c0 <- hatc0_cpp(
+      dist = info_dt_R$dist,
+      r = r,
+      Z_v = info_dt_R$Z_v,
+      e = info_dt_R$e,
+      lambda = lambda,
+      b = b,
+      N_tau = N_tau
+    )
   }
 
-  Mise_term1 <- gauss_quad(
+
+  Mise_term1 <- EstimationTools::gauss_quad(
     fun = hatcsq,
     lower = 0,
     upper = R
@@ -142,19 +149,24 @@ Mise_est <- function(info_dt, X, Z, b, R, divisor, fast) {
   return(Mise_term1 - 2 * Mise_term2)
 }
 
-bandwidth_selection_optim <- function(info_dt, X, Z, R, b_init = NULL, blimit=NULL, divisor, fast) {
+bandwidth_selection_optim <- function(
+  info_dt, X, Z, R, b_init = NULL, b_limit = NULL, divisor, fast
+) {
   MISE_est_fct <- function(b) Mise_est(info_dt, X, Z, b = b, R, divisor, fast)
   # MISE_est_fct <- function(b) Mise_est(info_dt, X, Z, b = expit_R(b, R), R)
 
-  if (is.null(blimit)){
-    blower=0
-    bupper=R
-    }  else {
-      blower=blimit[1]
-      bupper=blimit[2]
-      if (binit<blower | binit>bupper) 
+  if (is.null(b_limit)) {
+    blower = 0
+    bupper = R
+  } else {
+    blower = b_limit[1]
+    bupper = b_limit[2]
+    if (!is.null(b_init)) {
+      if (b_init < blower | b_init > bupper) {
         stop("binit not in specified interval for b")
-    }  
+      }
+    }
+  }
 
   if (!is.null(b_init)) {
     O <- optim(
@@ -197,7 +209,7 @@ bandwidth_selection_grid <- function(info_dt, X, Z, R, grid, fast) {
 #' @param r Vector of distance(s) for which to esimate the spatial covariance.
 #' @param b_init Initial value for optimisation of the bandwidth. If left empty,
 #' R/2 is used. If Grid is non-NULL, b_init should be left as NULL.
-#' @param blimit Search interval for b. If NULL, MISE is minimized over b in [0,R].                        
+#' @param b_limit Search interval for b. If NULL, MISE is minimized over b in [0,R].                        
 #' @param grid Grid to evaulate the MISE over. The bandwidth with the lowest MISE
 #' will then be selected for the mixed moment estimator. If set to NULL the MISE
 #' is found with numeric optimsation optimised. Using grid can sometimes save
@@ -211,7 +223,9 @@ bandwidth_selection_grid <- function(info_dt, X, Z, R, grid, fast) {
 #' distances at which the covariances are estimated (r), and the selected
 #' bandwidth (b).
 #' @export
-SpatCovarEst <- function(X, Z, R, r, b_init = NULL, blimit=NULL, rid = NULL, divisor = "dist", fast = TRUE) {
+SpatCovarEst <- function(
+  X, Z, R, r, b_init = NULL, b_limit = NULL, grid = NULL, divisor = "dist", fast = TRUE
+) {
   if (class(X) != "ppp" | class(Z) != "ppp") {
     stop("X and Z must be a spatstat ppp class")
   }
@@ -226,7 +240,7 @@ SpatCovarEst <- function(X, Z, R, r, b_init = NULL, blimit=NULL, rid = NULL, div
     }
   }
 
-  if (!(class(grid) %in% c("NULL", "numeric", "double", "integer"))) {
+  if (class(grid) %notin% c("NULL", "numeric", "double", "integer")) {
     stop("grid must be either NULL or a vector of numbers")
   }
 
@@ -239,19 +253,34 @@ SpatCovarEst <- function(X, Z, R, r, b_init = NULL, blimit=NULL, rid = NULL, div
   if(!(divisor %in% c("r", "dist"))){
     stop("Argument divisor must be 'r' or 'dist'.")
   }
-
+  
   info_dt <- table_construct(X, Z)
   if (is.null(grid)) {
-    b <- bandwidth_selection_optim(info_dt, X, Z, R, b_init, divisor, fast)
+    b <- bandwidth_selection_optim(info_dt, X, Z, R, b_init, b_limit, divisor, fast)
   } else {
     b <- bandwidth_selection_grid(info_dt, X, Z, R, grid, divisor, fast)
   }
-  if (length(r) == 1) {
-    c0 <- hatc0(info_dt, X, Z, r, b, divisor)
-  }
-  if (length(r) > 1) {
-    c0 <- sapply(r, function(x) hatc0(info_dt, X, Z, x, b, divisor))
-  }
+  
+  info_dt <- info_dt[order(dist)]
+  lambda <- X$n/spatstat.geom::area(X$window)
+  N_tau <- Z$n
+
+  c0 <- hatc0_cpp(
+    dist = info_dt$dist,
+    r = r,
+    Z_v = info_dt$Z_v,
+    e = info_dt$e,
+    lambda = lambda,
+    b = b,
+    N_tau = N_tau
+  )
+  
+  # if (length(r) == 1) {
+  #   c0 <- hatc0(info_dt, X, Z, r, b, divisor)
+  # }
+  # if (length(r) > 1) {
+  #   c0 <- sapply(r, function(x) hatc0(info_dt, X, Z, x, b, divisor))
+  # }
   out <- list(c0 = c0, r = r, b = b)
 }
 
@@ -263,27 +292,34 @@ SpatCovarEst <- function(X, Z, R, r, b_init = NULL, blimit=NULL, rid = NULL, div
 #' measured, and the marks represents the measured values.
 #' @param r Vector of distance(s) for which to esimate the spatial covariance.
 #' @param b The selected bandwidth.
-#' @param divisor Option to choose if r or ||u-v|| should be used in the divisor.
-#' In the former case set divisor = "r", and in the latter case set divisor = "dist".
-#' @return Returns a list containing the estimated covariances (c0), the
-#' distances at which the covariances are estimated (r), and the selected
-#' bandwidth (b).
+#' @return Returns a list containing the estimated covariances (c0) and the
+#' distances at which the covariances are estimated (r).
 #' @export
-SpatCovarEstFixed <- function(X, Z, r, b, divisor = "r") {
+SpatCovarEstFixed <- function(X, Z, r, b) {
   if (class(X) != "ppp" | class(Z) != "ppp") {
     stop("X and Z must be a spatstat ppp class")
   }
 
-  if(!(divisor %in% c("r", "dist"))){
-    stop("Argument divisor must be 'r' or 'dist'.")
+  if (r < 0 | b < 0) {
+    stop("r and b must be positive numbers.")
   }
+  
+  N_tau <- Z$n
+  lambda <- X$n / spatstat.geom::area(X$window)
 
   info_dt <- table_construct(X, Z)
-  if (length(r) == 1) {
-    c0 <- hatc0(info_dt, X, Z, r, b, divisor)
-  }
-  if (length(r) > 1) {
-    c0 <- sapply(r, function(x) hatc0(info_dt, X, Z, x, b, divisor))
-  }
-  out <- list(c0 = c0, r = r, b = b)
+  info_dt <- info_dt[order(dist)]
+
+  c0 <- hatc0_cpp(
+    dist = info_dt$dist,
+    r = r,
+    Z_v = info_dt$Z_v,
+    e = info_dt$e,
+    lambda = lambda,
+    b = b,
+    N_tau = N_tau
+  )
+
+  out <- list(c0 = c0, r = r)
+  return(out)
 }
