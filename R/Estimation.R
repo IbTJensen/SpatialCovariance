@@ -20,8 +20,8 @@ NULL
 #' @importFrom spatstat.geom crosspairs
 #' @importFrom data.table data.table setcolorder
 #' @importFrom spatstat.explore edge.Ripley
-table_construct <- function(X, Z) {
-  Neighbours <- crosspairs(X, Z, rmax = Inf)
+table_construct <- function(X, Z,rmax=Inf) {
+  Neighbours <- crosspairs(X, Z, rmax = rmax)
   Z_dt <- data.table(v_x = Z$x, v_y = Z$y, Z_v = Z$marks)
   info_dt <- data.table(
     u_x = Neighbours$xi,
@@ -300,7 +300,7 @@ SpatCovarEstFixed <- function(X, Z, r, b) {
   N_tau <- Z$n
   lambda <- X$n / spatstat.geom::area(X$window)
 
-  info_dt <- table_construct(X, Z)
+  info_dt <- table_construct(X, Z, max(r)+b)
   info_dt <- info_dt[order(dist)]
 
   c0 <- hatc0_cpp(
